@@ -17,9 +17,11 @@ const auth = betterAuth({
     },
   },
 
+  trustedOrigins: [process.env.CLIENT_ORIGIN],
+
   secret: process.env.BETTER_AUTH_SECRET,
 
   baseURL: process.env.BETTER_AUTH_URL,
 });
 
-module.exports = auth;
+module.exports = { auth };

@@ -1,15 +1,24 @@
 const express = require("express");
+
 const cors = require("cors");
+
 const dotenv = require("dotenv");
+
 const cookieParser = require("cookie-parser");
 
 dotenv.config();
 
-const app = express();
-const port = process.env.PORT || 5001;
+const { toNodeHandler } = require("better-auth/node");
 
 const { client } = require("./config/db");
-const auth = require("./auth/auth");
+
+const { auth } = require("./auth/auth");
+
+const carRoutes = require("./routes/carRoutes");
+
+const app = express();
+
+const port = process.env.PORT || 5001;
 
 app.use(
   cors({
@@ -18,28 +27,30 @@ app.use(
   }),
 );
 
-app.use(express.json());
 app.use(cookieParser());
 
-async function run() {
-  try {
-    await client.connect();
+app.all("/api/auth/*splat", toNodeHandler(auth));
 
-    console.log("MongoDB connected");
-  } finally {
-  }
-}
+app.use(express.json());
 
-run().catch(console.dir);
-
-app.use("/api/auth", async (req, res) => {
-  return auth.handler(req, res);
-});
+app.use("/api/cars", carRoutes);
 
 app.get("/", (req, res) => {
   res.send("DriveFleet server running");
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+async function startServer() {
+  try {
+    await client.connect();
+
+    console.log("MongoDB connected");
+
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+    });
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+startServer();
