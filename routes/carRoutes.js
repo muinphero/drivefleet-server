@@ -25,4 +25,20 @@ router.post("/", async (req, res) => {
   }
 });
 
+router.get("/", async (req, res) => {
+  try {
+    const carsCollection = db.collection("cars");
+
+    const cars = await carsCollection.find().sort({ createdAt: -1 }).toArray();
+
+    res.send(cars);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).send({
+      message: "Failed to fetch cars",
+    });
+  }
+});
+
 module.exports = router;
