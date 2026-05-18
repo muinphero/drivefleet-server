@@ -16,6 +16,8 @@ const { auth } = require("./auth/auth");
 
 const carRoutes = require("./routes/carRoutes");
 
+const bookingRoutes = require("./routes/bookingRoutes");
+
 const app = express();
 
 const port = process.env.PORT || 5001;
@@ -34,6 +36,8 @@ app.all("/api/auth/*splat", toNodeHandler(auth));
 app.use(express.json());
 
 app.use("/api/cars", carRoutes);
+
+app.use("/api/bookings", bookingRoutes);
 
 app.get("/", (req, res) => {
   res.send("DriveFleet server running");

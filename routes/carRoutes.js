@@ -68,4 +68,27 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+router.get("/owner/:email", async (req, res) => {
+  try {
+    const carsCollection = db.collection("cars");
+
+    const email = req.params.email;
+
+    const cars = await carsCollection
+      .find({
+        ownerEmail: email,
+      })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    res.send(cars);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).send({
+      message: "Failed to fetch user cars",
+    });
+  }
+});
+
 module.exports = router;
