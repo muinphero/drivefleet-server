@@ -120,27 +120,36 @@ router.delete("/:id", async (req, res) => {
       });
     }
 
+    // Authorization check
     if (booking.userEmail !== email) {
       return res.status(403).send({
         message: "Unauthorized action",
       });
     }
 
+    // Delete booking
     await bookingsCollection.deleteOne({
       _id: new ObjectId(id),
     });
 
-    // Decrement booking count
-    await carsCollection.updateOne(
-      {
-        _id: new ObjectId(booking.carId),
-      },
-      {
-        $inc: {
-          bookingCount: -1,
+    // Get current car
+    const currentCar = await carsCollection.findOne({
+      _id: new ObjectId(booking.carId),
+    });
+
+    // Prevent negative booking counts
+    if (currentCar && currentCar.bookingCount > 0) {
+      await carsCollection.updateOne(
+        {
+          _id: new ObjectId(booking.carId),
         },
-      },
-    );
+        {
+          $inc: {
+            bookingCount: -1,
+          },
+        },
+      );
+    }
 
     res.send({
       success: true,

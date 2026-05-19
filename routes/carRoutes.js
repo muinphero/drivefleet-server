@@ -1,10 +1,12 @@
 const express = require("express");
+
 const { ObjectId } = require("mongodb");
 
 const router = express.Router();
 
 const { db } = require("../config/db");
 
+// ADD CAR
 router.post("/", async (req, res) => {
   try {
     const carsCollection = db.collection("cars");
@@ -15,6 +17,7 @@ router.post("/", async (req, res) => {
 
     res.status(201).send({
       success: true,
+
       insertedId: result.insertedId,
     });
   } catch (error) {
@@ -26,6 +29,7 @@ router.post("/", async (req, res) => {
   }
 });
 
+// GET ALL CARS
 router.get("/", async (req, res) => {
   try {
     const carsCollection = db.collection("cars");
@@ -34,7 +38,7 @@ router.get("/", async (req, res) => {
 
     const query = {};
 
-    // Search by model or brand
+    // SEARCH
     if (search) {
       query.$or = [
         {
@@ -53,14 +57,14 @@ router.get("/", async (req, res) => {
       ];
     }
 
-    // Availability filter
+    // FILTER AVAILABLE
     if (availability === "available") {
       query.availability = true;
     }
 
     const sortOption = {};
 
-    // Price sorting
+    // SORT PRICE
     if (sort === "asc") {
       sortOption.dailyRentalPrice = 1;
     }
@@ -81,6 +85,33 @@ router.get("/", async (req, res) => {
   }
 });
 
+// GET USER/OWNER CARS
+router.get("/owner/:email", async (req, res) => {
+  try {
+    const carsCollection = db.collection("cars");
+
+    const email = req.params.email;
+
+    const cars = await carsCollection
+      .find({
+        ownerEmail: email,
+      })
+      .sort({
+        createdAt: -1,
+      })
+      .toArray();
+
+    res.send(cars);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).send({
+      message: "Failed to fetch user cars",
+    });
+  }
+});
+
+// GET SINGLE CAR
 router.get("/:id", async (req, res) => {
   try {
     const carsCollection = db.collection("cars");
@@ -107,36 +138,14 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.get("/owner/:email", async (req, res) => {
-  try {
-    const carsCollection = db.collection("cars");
-
-    const email = req.params.email;
-
-    const cars = await carsCollection
-      .find({
-        ownerEmail: email,
-      })
-      .sort({ createdAt: -1 })
-      .toArray();
-
-    res.send(cars);
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).send({
-      message: "Failed to fetch user cars",
-    });
-  }
-});
-
+// DELETE CAR
 router.delete("/:id", async (req, res) => {
   try {
     const carsCollection = db.collection("cars");
 
     const id = req.params.id;
 
-    const { email } = req.body;
+    const email = req.query.email;
 
     const car = await carsCollection.findOne({
       _id: new ObjectId(id),
@@ -148,7 +157,7 @@ router.delete("/:id", async (req, res) => {
       });
     }
 
-    // Ownership validation
+    // AUTHORIZATION
     if (car.ownerEmail !== email) {
       return res.status(403).send({
         message: "Unauthorized action",
@@ -169,6 +178,7 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+// UPDATE CAR
 router.patch("/:id", async (req, res) => {
   try {
     const carsCollection = db.collection("cars");
@@ -187,7 +197,7 @@ router.patch("/:id", async (req, res) => {
       });
     }
 
-    // Ownership validation
+    // AUTHORIZATION
     if (existingCar.ownerEmail !== email) {
       return res.status(403).send({
         message: "Unauthorized action",
