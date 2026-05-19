@@ -30,7 +30,46 @@ router.get("/", async (req, res) => {
   try {
     const carsCollection = db.collection("cars");
 
-    const cars = await carsCollection.find().sort({ createdAt: -1 }).toArray();
+    const { search, availability, sort } = req.query;
+
+    const query = {};
+
+    // Search by model or brand
+    if (search) {
+      query.$or = [
+        {
+          model: {
+            $regex: search,
+            $options: "i",
+          },
+        },
+
+        {
+          brand: {
+            $regex: search,
+            $options: "i",
+          },
+        },
+      ];
+    }
+
+    // Availability filter
+    if (availability === "available") {
+      query.availability = true;
+    }
+
+    const sortOption = {};
+
+    // Price sorting
+    if (sort === "asc") {
+      sortOption.dailyRentalPrice = 1;
+    }
+
+    if (sort === "desc") {
+      sortOption.dailyRentalPrice = -1;
+    }
+
+    const cars = await carsCollection.find(query).sort(sortOption).toArray();
 
     res.send(cars);
   } catch (error) {
