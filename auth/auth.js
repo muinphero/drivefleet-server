@@ -17,7 +17,7 @@ const auth = betterAuth({
     },
   },
 
-  trustedOrigins: ["http://localhost:3000"],
+  trustedOrigins: [process.env.CLIENT_ORIGIN],
 
   secret: process.env.BETTER_AUTH_SECRET,
 

@@ -6,14 +6,18 @@ const router = express.Router();
 
 const { db } = require("../config/db");
 
+const verifySession = require("../middlewares/verifySession");
+
 // CREATE BOOKING
-router.post("/", async (req, res) => {
+router.post("/", verifySession, async (req, res) => {
   try {
     const bookingsCollection = db.collection("bookings");
 
     const carsCollection = db.collection("cars");
 
     const bookingData = req.body;
+
+    bookingData.userEmail = req.user.email;
 
     const car = await carsCollection.findOne({
       _id: new ObjectId(bookingData.carId),
@@ -74,11 +78,11 @@ router.post("/", async (req, res) => {
 });
 
 // GET USER BOOKINGS
-router.get("/user/:email", async (req, res) => {
+router.get("/user/:email", verifySession, async (req, res) => {
   try {
     const bookingsCollection = db.collection("bookings");
 
-    const email = req.params.email;
+    const email = req.user.email;
 
     const bookings = await bookingsCollection
       .find({
@@ -100,13 +104,13 @@ router.get("/user/:email", async (req, res) => {
 });
 
 // CANCEL BOOKING
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", verifySession, async (req, res) => {
   try {
     const bookingsCollection = db.collection("bookings");
 
     const carsCollection = db.collection("cars");
 
-    const { email } = req.body;
+    const email = req.user.email;
 
     const id = req.params.id;
 

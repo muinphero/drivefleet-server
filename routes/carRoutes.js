@@ -6,8 +6,10 @@ const router = express.Router();
 
 const { db } = require("../config/db");
 
+const verifySession = require("../middlewares/verifySession");
+
 // ADD CAR
-router.post("/", async (req, res) => {
+router.post("/", verifySession, async (req, res) => {
   try {
     const carsCollection = db.collection("cars");
 
@@ -86,7 +88,7 @@ router.get("/", async (req, res) => {
 });
 
 // GET USER/OWNER CARS
-router.get("/owner/:email", async (req, res) => {
+router.get("/owner/:email", verifySession, async (req, res) => {
   try {
     const carsCollection = db.collection("cars");
 
@@ -139,13 +141,13 @@ router.get("/:id", async (req, res) => {
 });
 
 // DELETE CAR
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", verifySession, async (req, res) => {
   try {
     const carsCollection = db.collection("cars");
 
     const id = req.params.id;
 
-    const email = req.query.email;
+    const email = req.user.email;
 
     const car = await carsCollection.findOne({
       _id: new ObjectId(id),
@@ -179,13 +181,15 @@ router.delete("/:id", async (req, res) => {
 });
 
 // UPDATE CAR
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", verifySession, async (req, res) => {
   try {
     const carsCollection = db.collection("cars");
 
     const id = req.params.id;
 
-    const { email, updatedCar } = req.body;
+    const email = req.user.email;
+
+    const { updatedCar } = req.body;
 
     const existingCar = await carsCollection.findOne({
       _id: new ObjectId(id),
