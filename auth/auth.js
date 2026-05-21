@@ -24,4 +24,6 @@ const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
 });
 
-module.exports = { auth };
+module.exports = {
+  auth,
+};

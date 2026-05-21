@@ -6,20 +6,16 @@ const router = express.Router();
 
 const { db } = require("../config/db");
 
-const verifySession = require("../middlewares/verifySession");
+// const verifySession = require("../middlewares/verifySession");
+const verifySession = require("../middlewares/verifyJWT");
 
 // ADD CAR
 router.post("/", verifySession, async (req, res) => {
   try {
-    const carsCollection = db.collection("cars");
-
-    const carData = req.body;
-
-    const result = await carsCollection.insertOne(carData);
+    const result = await db.collection("cars").insertOne(req.body);
 
     res.status(201).send({
       success: true,
-
       insertedId: result.insertedId,
     });
   } catch (error) {
@@ -36,37 +32,61 @@ router.get("/", async (req, res) => {
   try {
     const carsCollection = db.collection("cars");
 
-    const { search, availability, sort } = req.query;
+    const { search, availability, vehicleType, sort } = req.query;
 
     const query = {};
 
-    // SEARCH
-    if (search) {
+    // SEARCH BY CAR NAME
+    if (search && search.trim()) {
+      const value = search.trim();
+
       query.$or = [
         {
-          model: {
-            $regex: search,
+          brand: {
+            $regex: value,
             $options: "i",
           },
         },
 
         {
-          brand: {
-            $regex: search,
+          model: {
+            $regex: value,
             $options: "i",
+          },
+        },
+
+        {
+          $expr: {
+            $regexMatch: {
+              input: {
+                $concat: ["$brand", " ", "$model"],
+              },
+
+              regex: value,
+
+              options: "i",
+            },
           },
         },
       ];
     }
 
-    // FILTER AVAILABLE
+    // CAR TYPE
+    if (vehicleType && vehicleType.trim()) {
+      query.vehicleType = {
+        $regex: `^${vehicleType}`,
+
+        $options: "i",
+      };
+    }
+
+    // AVAILABLE
     if (availability === "available") {
       query.availability = true;
     }
 
     const sortOption = {};
 
-    // SORT PRICE
     if (sort === "asc") {
       sortOption.dailyRentalPrice = 1;
     }
@@ -87,16 +107,13 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET USER/OWNER CARS
-router.get("/owner/:email", verifySession, async (req, res) => {
+// OWNER CARS
+router.get("/owner/:email", async (req, res) => {
   try {
-    const carsCollection = db.collection("cars");
-
-    const email = req.params.email;
-
-    const cars = await carsCollection
+    const cars = await db
+      .collection("cars")
       .find({
-        ownerEmail: email,
+        ownerEmail: req.params.email,
       })
       .sort({
         createdAt: -1,
@@ -105,23 +122,17 @@ router.get("/owner/:email", verifySession, async (req, res) => {
 
     res.send(cars);
   } catch (error) {
-    console.error(error);
-
     res.status(500).send({
       message: "Failed to fetch user cars",
     });
   }
 });
 
-// GET SINGLE CAR
+// SINGLE CAR
 router.get("/:id", async (req, res) => {
   try {
-    const carsCollection = db.collection("cars");
-
-    const id = req.params.id;
-
-    const car = await carsCollection.findOne({
-      _id: new ObjectId(id),
+    const car = await db.collection("cars").findOne({
+      _id: new ObjectId(req.params.id),
     });
 
     if (!car) {
@@ -131,98 +142,44 @@ router.get("/:id", async (req, res) => {
     }
 
     res.send(car);
-  } catch (error) {
-    console.error(error);
-
+  } catch {
     res.status(500).send({
       message: "Failed to fetch car",
     });
   }
 });
 
-// DELETE CAR
+// DELETE
 router.delete("/:id", verifySession, async (req, res) => {
   try {
-    const carsCollection = db.collection("cars");
-
-    const id = req.params.id;
-
-    const email = req.user.email;
-
-    const car = await carsCollection.findOne({
-      _id: new ObjectId(id),
-    });
-
-    if (!car) {
-      return res.status(404).send({
-        message: "Car not found",
-      });
-    }
-
-    // AUTHORIZATION
-    if (car.ownerEmail !== email) {
-      return res.status(403).send({
-        message: "Unauthorized action",
-      });
-    }
-
-    const result = await carsCollection.deleteOne({
-      _id: new ObjectId(id),
+    const result = await db.collection("cars").deleteOne({
+      _id: new ObjectId(req.params.id),
     });
 
     res.send(result);
-  } catch (error) {
-    console.error(error);
-
+  } catch {
     res.status(500).send({
-      message: "Failed to delete car",
+      message: "Failed to delete",
     });
   }
 });
 
-// UPDATE CAR
+// UPDATE
 router.patch("/:id", verifySession, async (req, res) => {
   try {
-    const carsCollection = db.collection("cars");
-
-    const id = req.params.id;
-
-    const email = req.user.email;
-
-    const { updatedCar } = req.body;
-
-    const existingCar = await carsCollection.findOne({
-      _id: new ObjectId(id),
-    });
-
-    if (!existingCar) {
-      return res.status(404).send({
-        message: "Car not found",
-      });
-    }
-
-    // AUTHORIZATION
-    if (existingCar.ownerEmail !== email) {
-      return res.status(403).send({
-        message: "Unauthorized action",
-      });
-    }
-
-    const result = await carsCollection.updateOne(
+    const result = await db.collection("cars").updateOne(
       {
-        _id: new ObjectId(id),
+        _id: new ObjectId(req.params.id),
       },
       {
-        $set: updatedCar,
+        $set: req.body.updatedCar,
       },
     );
 
     res.send(result);
-  } catch (error) {
-    console.error(error);
-
+  } catch {
     res.status(500).send({
-      message: "Failed to update car",
+      message: "Failed to update",
     });
   }
 });

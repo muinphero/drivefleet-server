@@ -36,6 +36,10 @@ app.all("/api/auth/*splat", toNodeHandler(auth));
 
 app.use(express.json());
 
+const jwtRoutes = require("./routes/jwtRoutes");
+
+app.use("/api/auth/jwt", jwtRoutes);
+
 app.use("/api/cars", carRoutes);
 
 app.use("/api/bookings", bookingRoutes);
