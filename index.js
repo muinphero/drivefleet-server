@@ -24,7 +24,8 @@ const port = process.env.PORT || 5001;
 
 app.use(
   cors({
-    origin: process.env.CLIENT_ORIGIN,
+    origin: ["http://localhost:3000", process.env.CLIENT_ORIGIN],
+
     credentials: true,
   }),
 );
@@ -50,7 +51,9 @@ async function startServer() {
     console.log("MongoDB connected");
 
     app.listen(port, () => {
-      console.log(`Server running on port ${port}`);
+      console.log("CLIENT_ORIGIN:", process.env.CLIENT_ORIGIN);
+
+      console.log("PORT:", process.env.PORT);
     });
   } catch (error) {
     console.error(error);
