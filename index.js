@@ -1,9 +1,6 @@
 const express = require("express");
-
 const cors = require("cors");
-
 const dotenv = require("dotenv");
-
 const cookieParser = require("cookie-parser");
 
 dotenv.config();
@@ -18,41 +15,29 @@ const carRoutes = require("./routes/carRoutes");
 
 const bookingRoutes = require("./routes/bookingRoutes");
 
+const jwtRoutes = require("./routes/jwtRoutes");
+
 const app = express();
 
 const port = process.env.PORT || 5001;
 
-// app.use(
-//   cors({
-//     origin: ["http://localhost:3000", process.env.CLIENT_ORIGIN],
-
-//     credentials: true,
-//   }),
-// );
-
-// app.use(cookieParser());
-
-// app.all("/api/auth/*splat", toNodeHandler(auth));
-
-// app.use(express.json());
+const allowedOrigins = process.env.CLIENT_ORIGIN.split(",").map((v) =>
+  v.trim(),
+);
 
 app.use(
   cors({
     origin(origin, callback) {
-      const allowed = ["http://localhost:3000", process.env.CLIENT_ORIGIN];
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
 
-      if (!origin || allowed.includes(origin)) {
-        return callback(null, true);
+        return;
       }
 
-      callback(new Error("CORS blocked"));
+      callback(Error(`Origin blocked: ${origin}`));
     },
 
     credentials: true,
-
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-
-    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
 
@@ -61,8 +46,6 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.all("/api/auth/*splat", toNodeHandler(auth));
-
-const jwtRoutes = require("./routes/jwtRoutes");
 
 app.use("/api/auth/jwt", jwtRoutes);
 
@@ -80,13 +63,13 @@ async function startServer() {
 
     console.log("MongoDB connected");
 
-    app.listen(port, () => {
-      console.log("CLIENT_ORIGIN:", process.env.CLIENT_ORIGIN);
+    console.log(allowedOrigins);
 
-      console.log("PORT:", process.env.PORT);
+    app.listen(port, () => {
+      console.log(`Running on ${port}`);
     });
-  } catch (error) {
-    console.error(error);
+  } catch (e) {
+    console.error(e);
   }
 }
 
