@@ -1,187 +1,104 @@
 const express = require("express");
-
 const { ObjectId } = require("mongodb");
 
 const router = express.Router();
 
 const { db } = require("../config/db");
 
-// const verifySession = require("../middlewares/verifySession");
-const verifySession = require("../middlewares/verifyJWT");
+const verifyJWT = require("../middlewares/verifyJWT");
 
-// ADD CAR
-router.post("/", verifySession, async (req, res) => {
+function escapeRegex(v) {
+  return v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+router.post("/", verifyJWT, async (req, res) => {
   try {
-    const result = await db.collection("cars").insertOne(req.body);
+    const car = {
+      ...req.body,
+      ownerEmail: req.user.email,
+      createdAt: new Date(),
+      bookingCount: 0,
+    };
 
-    res.status(201).send({
-      success: true,
-      insertedId: result.insertedId,
-    });
-  } catch (error) {
-    console.error(error);
+    const result = await db.collection("cars").insertOne(car);
 
+    res.status(201).send(result);
+  } catch {
     res.status(500).send({
-      message: "Failed to add car",
+      message: "Failed",
     });
   }
 });
 
-// GET ALL CARS
 router.get("/", async (req, res) => {
   try {
-    const carsCollection = db.collection("cars");
-
-    const { search, availability, vehicleType, sort } = req.query;
+    const { search, vehicleType, availability, sort } = req.query;
 
     const query = {};
 
-    // SEARCH BY CAR NAME
-    if (search && search.trim()) {
-      const value = search.trim();
+    if (search) {
+      const safe = escapeRegex(search);
 
       query.$or = [
         {
           brand: {
-            $regex: value,
+            $regex: safe,
             $options: "i",
           },
         },
 
         {
           model: {
-            $regex: value,
+            $regex: safe,
             $options: "i",
-          },
-        },
-
-        {
-          $expr: {
-            $regexMatch: {
-              input: {
-                $concat: ["$brand", " ", "$model"],
-              },
-
-              regex: value,
-
-              options: "i",
-            },
           },
         },
       ];
     }
 
-    // CAR TYPE
-    if (vehicleType && vehicleType.trim()) {
-      query.vehicleType = {
-        $regex: `^${vehicleType}`,
-
-        $options: "i",
-      };
+    if (vehicleType) {
+      query.vehicleType = vehicleType;
     }
 
-    // AVAILABLE
     if (availability === "available") {
       query.availability = true;
     }
 
-    const sortOption = {};
+    const sortObj = {};
 
-    if (sort === "asc") {
-      sortOption.dailyRentalPrice = 1;
-    }
+    if (sort === "asc") sortObj.dailyRentalPrice = 1;
 
-    if (sort === "desc") {
-      sortOption.dailyRentalPrice = -1;
-    }
+    if (sort === "desc") sortObj.dailyRentalPrice = -1;
 
-    const cars = await carsCollection.find(query).sort(sortOption).toArray();
-
-    res.send(cars);
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).send({
-      message: "Failed to fetch cars",
-    });
-  }
-});
-
-// OWNER CARS
-router.get("/owner/:email", async (req, res) => {
-  try {
     const cars = await db
       .collection("cars")
-      .find({
-        ownerEmail: req.params.email,
-      })
-      .sort({
-        createdAt: -1,
-      })
+      .find(query)
+      .sort(sortObj)
       .toArray();
 
     res.send(cars);
-  } catch (error) {
+  } catch {
     res.status(500).send({
-      message: "Failed to fetch user cars",
+      message: "Failed",
     });
   }
 });
 
-// SINGLE CAR
-router.get("/:id", async (req, res) => {
-  try {
-    const car = await db.collection("cars").findOne({
-      _id: new ObjectId(req.params.id),
-    });
-
-    if (!car) {
-      return res.status(404).send({
-        message: "Car not found",
-      });
-    }
-
-    res.send(car);
-  } catch {
-    res.status(500).send({
-      message: "Failed to fetch car",
+router.get("/owner/:email", verifyJWT, async (req, res) => {
+  if (req.user.email !== req.params.email) {
+    return res.status(403).send({
+      message: "Forbidden",
     });
   }
-});
 
-// DELETE
-router.delete("/:id", verifySession, async (req, res) => {
-  try {
-    const result = await db.collection("cars").deleteOne({
-      _id: new ObjectId(req.params.id),
-    });
+  const cars = await db
+    .collection("cars")
+    .find({
+      ownerEmail: req.user.email,
+    })
+    .toArray();
 
-    res.send(result);
-  } catch {
-    res.status(500).send({
-      message: "Failed to delete",
-    });
-  }
-});
-
-// UPDATE
-router.patch("/:id", verifySession, async (req, res) => {
-  try {
-    const result = await db.collection("cars").updateOne(
-      {
-        _id: new ObjectId(req.params.id),
-      },
-      {
-        $set: req.body.updatedCar,
-      },
-    );
-
-    res.send(result);
-  } catch {
-    res.status(500).send({
-      message: "Failed to update",
-    });
-  }
+  res.send(cars);
 });
 
 module.exports = router;

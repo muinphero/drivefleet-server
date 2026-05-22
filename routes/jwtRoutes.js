@@ -1,5 +1,4 @@
 const express = require("express");
-
 const jwt = require("jsonwebtoken");
 
 const router = express.Router();
@@ -9,72 +8,47 @@ router.post("/", async (req, res) => {
     const { email, id } = req.body;
 
     if (!email || !id) {
-      return res.status(400).send({
-        message: "Invalid user",
+      return res.status(401).send({
+        message: "Unauthorized",
       });
     }
 
-    const token = jwt.sign(
-      {
-        email,
-        id,
-      },
+    const token = jwt.sign({ email, id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
-      process.env.JWT_SECRET,
+    res.cookie("drivefleet_token", token, {
+      httpOnly: true,
 
-      {
-        expiresIn: "7d",
-      },
-    );
+      secure: true,
 
-    res.cookie(
-      "drivefleet_token",
+      sameSite: "none",
 
-      token,
-
-      {
-        httpOnly: true,
-
-        secure: process.env.NODE_ENV === "production",
-
-        sameSite: "lax",
-
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      },
-    );
+      maxAge: 604800000,
+    });
 
     res.send({
       success: true,
     });
-  } catch (error) {
-    console.error(error);
-
+  } catch {
     res.status(500).send({
-      message: "Token generation failed",
+      message: "Login failed",
     });
   }
 });
 
-router.post(
-  "/logout",
+router.post("/logout", (req, res) => {
+  res.clearCookie("drivefleet_token", {
+    httpOnly: true,
 
-  (req, res) => {
-    res.clearCookie(
-      "drivefleet_token",
+    secure: true,
 
-      {
-        httpOnly: true,
+    sameSite: "none",
+  });
 
-        secure: process.env.NODE_ENV === "production",
-
-        sameSite: "lax",
-      },
-    );
-
-    res.send({
-      success: true,
-    });
-  },
-);
+  res.send({
+    success: true,
+  });
+});
 
 module.exports = router;
