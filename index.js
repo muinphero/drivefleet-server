@@ -22,19 +22,45 @@ const app = express();
 
 const port = process.env.PORT || 5001;
 
+// app.use(
+//   cors({
+//     origin: ["http://localhost:3000", process.env.CLIENT_ORIGIN],
+
+//     credentials: true,
+//   }),
+// );
+
+// app.use(cookieParser());
+
+// app.all("/api/auth/*splat", toNodeHandler(auth));
+
+// app.use(express.json());
+
 app.use(
   cors({
-    origin: ["http://localhost:3000", process.env.CLIENT_ORIGIN],
+    origin(origin, callback) {
+      const allowed = ["http://localhost:3000", process.env.CLIENT_ORIGIN];
+
+      if (!origin || allowed.includes(origin)) {
+        return callback(null, true);
+      }
+
+      callback(new Error("CORS blocked"));
+    },
 
     credentials: true,
+
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
+
+app.use(express.json());
 
 app.use(cookieParser());
 
 app.all("/api/auth/*splat", toNodeHandler(auth));
-
-app.use(express.json());
 
 const jwtRoutes = require("./routes/jwtRoutes");
 
