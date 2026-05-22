@@ -7,7 +7,7 @@ const router = express.Router();
 const { db } = require("../config/db");
 
 // const verifySession = require("../middlewares/verifySession");
-const verifySession = require("../middlewares/verifyJWT");
+const verifySession = require("../middlewares/verifySession");
 
 // CREATE BOOKING
 router.post("/", verifySession, async (req, res) => {
